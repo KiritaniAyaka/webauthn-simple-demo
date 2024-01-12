@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>WebAuthn</title>
+	<script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.es5.umd.min.js"></script>
+</head>
+
+<body>
+	<input type="text" id="username" name="username" autocomplete="username webauthn">
+	<button id="btnRegister">Register</button>
+	<button id="btnLogin">Login</button>
+	<button id="btnLogout">Logout</button>
+	<button id="btnWhoami">whoami</button>
+	<div id="info"></div>
+
+	<script>
+		const usernameField = document.querySelector('#username')
+		const info = document.querySelector('#info')
+
+		document.querySelector('#btnRegister').addEventListener('click', () => register())
+		document.querySelector('#btnLogin').addEventListener('click', () => login())
+		document.querySelector('#btnLogout').addEventListener('click', () => location.href = '/logout')
+		document.querySelector('#btnWhoami').addEventListener('click', () => location.href = '/whoami')
+
+		login(true)
+		console.log(window.SimpleWebAuthnBrowser)
+
+		function register() {
+			if (!usernameField.value) {
+				return
+			}
+			fetch('/register/option', {
+				method: 'post',
+				body: JSON.stringify({ username: usernameField.value }),
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			})
+				.then(res => res.json())
+				.then((opts) => {
+					console.log('Options', opts)
+					return window.SimpleWebAuthnBrowser.startRegistration(opts)
+				})
+				.then((cred) => {
+					console.log('Credential', cred)
+					return fetch('/register/option', {
+						method: 'post',
+						body: JSON.stringify(cred),
+						headers: {
+							'Content-Type': 'application/json',
+						},
+					})
+				})
+				.then(res => res.json())
+				.then((res) => {
+					info.innerText = res.verified ? 'Authenticator registered' : `Something went wrong: ${JSON.stringify(res)}`
+				})
+				.catch((err) => {
+					if (err.name === 'AbortError') {
+						return console.log('Ceremony aborted')
+					}
+					if (err.name === 'NotAllowedError') {
+						return console.log('User canceled or timeout')
+					}
+					console.error(err)
+				})
+		}
+
+		function login(conditionalUI = false) {
+			fetch('/login/option', {
+				method: 'post',
+				body: JSON.stringify({ username: usernameField.value }),
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			})
+				.then(res => res.json())
+				.then((opts) => {
+					console.log('Options', opts)
+					return window.SimpleWebAuthnBrowser.startAuthentication(opts, conditionalUI)
+				})
+				.then((auth) => {
+					console.log('Authentication', auth)
+					return fetch('/login/verify', {
+						method: 'post',
+						body: JSON.stringify(auth),
+						headers: {
+							'Content-Type': 'application/json',
+						},
+					})
+				})
+				.then(res => res.json())
+				.then((verification) => {
+					if (verification && verification.verified) {
+						info.innerHTML = 'Authenticated'
+					} else {
+						info.innerHTML = `Something went wrong: ${JSON.stringify(verification)}`
+					}
+				})
+				.catch((err) => {
+					if (err.name === 'AbortError') {
+						return console.log('Ceremony aborted')
+					}
+					if (err.name === 'NotAllowedError') {
+						return console.log('User canceled or timeout')
+					}
+					console.error(err)
+				})
+		}
+	</script>
+</body>
+
+</html>

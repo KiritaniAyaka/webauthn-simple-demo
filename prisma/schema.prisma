@@ -1,0 +1,34 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int      @id @default(autoincrement())
+  username String
+  device   Device[]
+}
+
+model Device {
+  id                  Int                       @id @default(autoincrement())
+  credentialPublicKey String
+  credentialID        String
+  counter             Int
+  transports          AuthenticatorTransports[]
+  user                User                      @relation(fields: [userId], references: [id])
+  userId              Int
+}
+
+model AuthenticatorTransports {
+  id       Int     @id @default(autoincrement())
+  type     String
+  device   Device? @relation(fields: [deviceId], references: [id])
+  deviceId Int?
+}
