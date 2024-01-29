@@ -4,6 +4,7 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
+		"postinstall": "pnpm prisma generate",
 		"dev": "tsc --watch"
 	},
 	"keywords": [],
